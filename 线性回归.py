@@ -24,3 +24,7 @@ for w in np.arange(0.0, 4.1, 0.1):
     print('MSE=', l_sum / 3)
     w_list.append(w)
     mse_list.append(l_sum / 3)
+plt.plot(w_list, mse_list)
+plt.ylabel('Loss')
+plt.xlabel('w')
+plt.show()
