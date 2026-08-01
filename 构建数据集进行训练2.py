@@ -66,7 +66,7 @@ def train(epoch):
     train_loss = 0.0
     count = 0
     for i, data in enumerate(train_loader, 0):
-        inputs, labels = data
+        inputs, labels = data#inputs, labels已经是张量了
         y_pred = model(inputs)
 
         loss = criterion(y_pred, labels)
