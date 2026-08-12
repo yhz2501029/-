@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from torchvision import transforms
 from torchvision import datasets
 from torch.utils.data import DataLoader
@@ -8,33 +9,50 @@ import torch.optim as optim
 # prepare dataset
 
 batch_size = 64
-transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])  # 归一化,均值和方差
 
-train_dataset = datasets.MNIST(root='手写数字数据集/', train=True, download=True, transform=transform)
+train_dataset = datasets.MNIST(root='手写数字数据集', train=True, download=True, transform=transform)
 train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
 test_dataset = datasets.MNIST(root='手写数字数据集', train=False, download=True, transform=transform)
 test_loader = DataLoader(test_dataset, shuffle=False, batch_size=batch_size)
 
 
 # design model using class
-
-
-class Net(torch.nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.conv1 = torch.nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = torch.nn.Conv2d(10, 20, kernel_size=5)
-        self.pooling = torch.nn.MaxPool2d(2)
-        self.fc = torch.nn.Linear(320, 10)
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super(ResidualBlock, self).__init__()
+        self.channels = channels
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
 
     def forward(self, x):
-        # flatten data from (n,1,28,28) to (n, 784)
-        batch_size = x.size(0)
-        x = F.relu(self.pooling(self.conv1(x)))
-        x = F.relu(self.pooling(self.conv2(x)))
-        x = x.view(batch_size, -1)  # -1 此处自动算出的是320
-        x = self.fc(x)
+        y = F.relu(self.conv1(x))
+        y = self.conv2(y)
+        return F.relu(x + y)
 
+
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(1, 16, kernel_size=5)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=5)  # 88 = 24x3 + 16
+
+        self.rblock1 = ResidualBlock(16)
+        self.rblock2 = ResidualBlock(32)
+
+        self.mp = nn.MaxPool2d(2)
+        self.fc = nn.Linear(512, 10)  # 暂时不知道1408咋能自动出来的
+
+    def forward(self, x):
+        in_size = x.size(0)
+
+        x = self.mp(F.relu(self.conv1(x)))
+        x = self.rblock1(x)
+        x = self.mp(F.relu(self.conv2(x)))
+        x = self.rblock2(x)
+
+        x = x.view(in_size, -1)
+        x = self.fc(x)
         return x
 
 
