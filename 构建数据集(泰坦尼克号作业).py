@@ -10,7 +10,7 @@ import torch
 
 # 读取数据
 df = pd.read_csv('泰坦尼克号数据集/titanic/train.csv')
-
+tf=pd.read_csv('泰坦尼克号数据集/titanic/test.csv')
 # ====================
 # 取标签
 # ====================
@@ -143,3 +143,109 @@ plt.plot(epoch_list, loss_list)
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.show()
+# ==========================
+# 处理test数据
+# ==========================
+
+test_x = tf[
+    [
+        'Pclass',
+        'Sex',
+        'Age',
+        'SibSp',
+        'Parch',
+        'Fare',
+        'Embarked'
+    ]
+].copy()
+
+
+# Age缺失
+test_x['Age'] = test_x['Age'].fillna(
+    x['Age'].mean()
+)
+
+
+# Fare缺失
+test_x['Fare'] = test_x['Fare'].fillna(
+    x['Fare'].mean()
+)
+
+
+# Embarked缺失
+test_x['Embarked'] = test_x['Embarked'].fillna(
+    x['Embarked'].mode()[0]
+)
+
+
+# ==========================
+# 字符串编码
+# ==========================
+
+test_x['Sex'] = test_x['Sex'].map(
+    {
+        'male':0,
+        'female':1
+    }
+)
+
+
+test_x['Embarked'] = test_x['Embarked'].map(
+    {
+        'S':0,
+        'C':1,
+        'Q':2
+    }
+)
+
+
+# ==========================
+# 标准化
+# 注意：
+# 这里不能重新fit
+# 必须使用训练集的scaler
+# ==========================
+
+test_x = torch.tensor(
+    scaler.transform(test_x),
+    dtype=torch.float32
+)
+
+
+print(test_x.shape)
+# ==========================
+# 模型预测
+# ==========================
+
+model.eval()
+
+with torch.no_grad():
+
+    pred = model(test_x)
+
+
+# 概率转0/1
+pred = (pred >= 0.5).int()
+
+
+print(pred[:10])
+# ==========================
+# 保存Kaggle格式
+# ==========================
+
+
+submission = pd.DataFrame(
+    {
+        "PassengerId": tf["PassengerId"],
+        "Survived": pred.numpy().reshape(-1)
+    }
+)
+
+
+submission.to_csv(
+    r"D:\Pycharm\深度学习\outputs\泰坦尼克\submission.csv",
+    index=False
+)
+
+
+print(submission.head())
